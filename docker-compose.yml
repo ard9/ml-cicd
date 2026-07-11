@@ -1,0 +1,29 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount source + model so you can edit code and see changes without rebuilding.
+      # Remove these two lines for a "production-like" run using only what's baked into the image.
+      - ./src:/app/src
+      - ./models:/app/models
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: uvicorn src.api:app --host 0.0.0.0 --port 8000 --reload
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # Run training on demand: `docker compose run --rm train`
+  # Writes to ./models, which the api service mounts above, so a fresh
+  # training run is picked up by the running API without a rebuild.
+  train:
+    build: .
+    volumes:
+      - ./models:/app/models
+    command: python src/train.py
+    profiles: ["tools"]

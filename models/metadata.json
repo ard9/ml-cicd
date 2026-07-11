@@ -1,0 +1,22 @@
+{
+  "model_type": "RandomForestClassifier",
+  "feature_names": [
+    "sepal length (cm)",
+    "sepal width (cm)",
+    "petal length (cm)",
+    "petal width (cm)"
+  ],
+  "class_names": [
+    "setosa",
+    "versicolor",
+    "virginica"
+  ],
+  "metrics": {
+    "accuracy": 0.9,
+    "f1_macro": 0.8997,
+    "n_train": 120,
+    "n_test": 30
+  },
+  "trained_at": "2026-07-10T22:37:46Z",
+  "min_accuracy_gate": 0.9
+}

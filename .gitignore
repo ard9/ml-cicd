@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+*.egg-info/
+.DS_Store
+
+# Uncomment if you don't want to commit trained model artifacts to git
+# (many teams instead store these in DVC, MLflow, or a registry)
+# models/*.joblib
+# models/metadata.json
