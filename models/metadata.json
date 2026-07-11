@@ -17,6 +17,6 @@
     "n_train": 120,
     "n_test": 30
   },
-  "trained_at": "2026-07-10T22:37:46Z",
+  "trained_at": "2026-07-11T02:57:42Z",
   "min_accuracy_gate": 0.9
 }
