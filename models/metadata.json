@@ -12,11 +12,11 @@
     "virginica"
   ],
   "metrics": {
-    "accuracy": 0.95,
+    "accuracy": 0.9,
     "f1_macro": 0.8997,
     "n_train": 120,
     "n_test": 30
   },
-  "trained_at": "2026-07-11T02:57:42Z",
+  "trained_at": "2026-07-11T03:17:27Z",
   "min_accuracy_gate": 0.9
 }

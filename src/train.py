@@ -36,7 +36,7 @@ def train_and_evaluate(random_state: int = 42):
         X, y, test_size=0.2, random_state=random_state, stratify=y
     )
 
-    model = RandomForestClassifier(n_estimators=100, random_state=random_state)
+    model = RandomForestClassifier(n_estimators=1000, random_state=random_state)
     model.fit(X_train, y_train)
 
     predictions = model.predict(X_test)
