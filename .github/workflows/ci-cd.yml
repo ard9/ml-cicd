@@ -1,136 +1,25 @@
-name: CI/CD - Iris Classifier
+name: CI
 
-# When does this pipeline run?
 on:
   push:
     branches: [main]
-  pull_request:
-    branches: [main]
-
-env:
-  IMAGE_NAME: ghcr.io/${{ github.repository }}
 
 jobs:
-
-  # ---------------------------------------------------------------
-  # JOB 1: Lint + unit tests. Fastest job, fails fast on bad code.
-  # ---------------------------------------------------------------
-  lint-and-test:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
+      - name: Fetch Production model from DagsHub
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+          MLFLOW_TRACKING_USERNAME: ${{ secrets.MLFLOW_TRACKING_USERNAME }}
+          MLFLOW_TRACKING_PASSWORD: ${{ secrets.MLFLOW_TRACKING_PASSWORD }}
+        run: python src/fetch_production_model.py
 
-      - name: Lint with ruff
-        run: ruff check src/ tests/
-
-      - name: Run unit tests
-        run: pytest tests/test_api.py -v
-        # Note: test_api.py needs a trained model to exist first for /predict
-        # tests to work end to end in some setups. Here we train a throwaway
-        # model just for this job so linting/API tests are self-contained.
-        # (See the dedicated train-and-validate job for the REAL gated model.)
-
-  # ---------------------------------------------------------------
-  # JOB 2: This is the "MLOps" quality gate. Train the model fresh,
-  # evaluate it, and STOP THE PIPELINE if it doesn't meet the bar.
-  # This is what separates "just CI/CD" from "MLOps CI/CD".
-  # ---------------------------------------------------------------
-  validate-model:
-    needs: lint-and-test
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: "pip"
-
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-
-
-      - name: Run full test suite against the freshly trained model
+      - name: Run quality gate tests
         run: pytest tests/ -v
-
-      - name: Upload validated model as artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: trained-model
-          path: models/
-          retention-days: 14
-
-  # ---------------------------------------------------------------
-  # JOB 3: Build the Docker image using the VALIDATED model from
-  # job 2 (not a randomly retrained one), then push to GitHub
-  # Container Registry (GHCR). Only runs on pushes to main, not PRs.
-  # ---------------------------------------------------------------
-  build-and-push:
-    needs: validate-model
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Download validated model artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: trained-model
-          path: models/
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build and push image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-  # ---------------------------------------------------------------
-  # JOB 4: Deploy. Calls a Render deploy hook so Render pulls the
-  # freshly published image and redeploys. See README.md for setup.
-  # ---------------------------------------------------------------
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    steps:
-      - name: Trigger Render deploy
-        run: |
-          if [ -z "${{ secrets.RENDER_DEPLOY_HOOK }}" ]; then
-            echo "RENDER_DEPLOY_HOOK secret not set - skipping deploy trigger."
-            echo "Add it under Settings > Secrets and variables > Actions to enable this step."
-            exit 0
-          fi
-          curl -f -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
-          echo "Deploy triggered. Render will pull ${{ env.IMAGE_NAME }}:latest and redeploy."

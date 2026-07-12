@@ -9,12 +9,13 @@ This script represents the "MLOps" heart of the project:
 5. Enforce a quality gate: if accuracy is below MIN_ACCURACY, exit with
    a non-zero code so the CI/CD pipeline stops and does NOT ship a bad model.
 """
-
+import os
 import json
 import sys
 import time
 from pathlib import Path
-
+import mlflow
+import mlflow.sklearn
 import joblib
 from sklearn.datasets import load_iris
 from sklearn.ensemble import RandomForestClassifier
@@ -69,22 +70,40 @@ def save_artifacts(model, metadata: dict):
 
 
 def main():
-    print("Starting training run...")
-    model, metadata = train_and_evaluate()
+    mlflow.set_tracking_uri(
+        os.environ.get("MLFLOW_TRACKING_URI", "http://mlflow:5000")
+    )
 
-    print(json.dumps(metadata, indent=2))
+    mlflow.set_experiment(
+        "iris-classifier"
+    )
 
-    accuracy = metadata["metrics"]["accuracy"]
-    if accuracy < MIN_ACCURACY:
-        print(
-            f"QUALITY GATE FAILED: accuracy {accuracy} < required {MIN_ACCURACY}. "
-            "Refusing to save/ship this model."
+    with mlflow.start_run():
+
+        print("Starting training run...")
+
+        model, metadata = train_and_evaluate()
+
+        accuracy = metadata["metrics"]["accuracy"]
+        f1 = metadata["metrics"]["f1_macro"]
+
+        mlflow.log_param("model_type", "RandomForestClassifier")
+        mlflow.log_param("n_estimators", 1000)
+
+        mlflow.log_metric("accuracy", accuracy)
+        mlflow.log_metric("f1_macro", f1)
+
+        if accuracy < MIN_ACCURACY:
+            print("QUALITY GATE FAILED")
+            sys.exit(1)
+
+        mlflow.sklearn.log_model(
+            model,
+            "model",
+            registered_model_name="iris-classifier"
         )
-        sys.exit(1)
-
-    save_artifacts(model, metadata)
-    print(f"QUALITY GATE PASSED. Model saved to {MODEL_PATH}")
-
+        mlflow.log_dict(metadata, "metadata.json") 
+        print("QUALITY GATE PASSED")
 
 if __name__ == "__main__":
     main()
