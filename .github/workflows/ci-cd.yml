@@ -66,7 +66,7 @@ jobs:
       - name: Run full test suite against the freshly trained model
         run: pytest tests/ -v
 
-      - name: Upload trained model as artifact
+      - name: Upload validated model as artifact
         uses: actions/upload-artifact@v4
         with:
           name: trained-model
@@ -79,7 +79,7 @@ jobs:
   # Container Registry (GHCR). Only runs on pushes to main, not PRs.
   # ---------------------------------------------------------------
   build-and-push:
-    needs: train-and-validate
+    needs: validate-model
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
