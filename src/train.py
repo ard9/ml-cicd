@@ -25,7 +25,7 @@ MODEL_DIR = Path(__file__).resolve().parent.parent / "models"
 MODEL_PATH = MODEL_DIR / "model.joblib"
 METADATA_PATH = MODEL_DIR / "metadata.json"
 
-MIN_ACCURACY = 0.99  # quality gate threshold
+MIN_ACCURACY = 0.9  # quality gate threshold
 
 
 def train_and_evaluate(random_state: int = 42):

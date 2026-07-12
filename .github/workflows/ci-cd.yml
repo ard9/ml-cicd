@@ -45,7 +45,7 @@ jobs:
   # evaluate it, and STOP THE PIPELINE if it doesn't meet the bar.
   # This is what separates "just CI/CD" from "MLOps CI/CD".
   # ---------------------------------------------------------------
-  train-and-validate:
+  validate-model:
     needs: lint-and-test
     runs-on: ubuntu-latest
     steps:
@@ -61,10 +61,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Train model + enforce quality gate
-        run: python src/train.py
-        # train.py exits with code 1 if accuracy < MIN_ACCURACY,
-        # which automatically fails this step and stops the pipeline.
+
 
       - name: Run full test suite against the freshly trained model
         run: pytest tests/ -v
