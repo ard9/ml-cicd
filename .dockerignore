@@ -6,3 +6,8 @@ __pycache__
 tests/
 README.md
 .venv
+.env
+mlflow_creds.txt
+mlruns/
+mlflow-db/
+models/

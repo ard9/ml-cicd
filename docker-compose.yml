@@ -1,11 +1,13 @@
 services:
   api:
-    build: .
+    build:
+      context: .
+      secrets:
+        - mlflow_creds
+    image: ml-cicd-project-api:v2
     ports:
       - "8000:8000"
     volumes:
-      # Mount source + model so you can edit code and see changes without rebuilding.
-      # Remove these two lines for a "production-like" run using only what's baked into the image.
       - ./src:/app/src
       - ./models:/app/models
     environment:
@@ -22,8 +24,44 @@ services:
   # Writes to ./models, which the api service mounts above, so a fresh
   # training run is picked up by the running API without a rebuild.
   train:
-    build: .
+    build:
+      context: .
+      target: train
+    image: ml-cicd-project-api:train
+    env_file: .env
     volumes:
       - ./models:/app/models
+      - ./mlruns:/mlruns
     command: python src/train.py
     profiles: ["tools"]
+    depends_on: [mlflow]
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.15.1
+    container_name: mlflow
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./mlruns:/mlruns
+      - ./mlflow-db:/mlflow-db
+    command:
+      - mlflow
+      - server
+      - --host
+      - 0.0.0.0
+      - --port
+      - "5000"
+      - --backend-store-uri
+      - sqlite:////mlflow-db/mlflow.db
+      - --artifacts-destination
+      - /mlruns
+      - --serve-artifacts
+      - --gunicorn-opts
+      - "--access-logfile - --error-logfile -"
+secrets:
+  mlflow_creds:
+    file: ./mlflow_creds.txt
+
+networks:
+    ml-network:
+      driver: bridge
