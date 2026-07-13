@@ -1,11 +1,22 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check src/
+
   test:
+    needs: lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -22,9 +33,28 @@ jobs:
       - name: Run quality gate tests
         run: pytest tests/ -v
 
-  deploy:
+  build:
     needs: test
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
+      - name: Create mlflow_creds secret file
+        run: |
+          echo "MLFLOW_TRACKING_URI=${{ secrets.MLFLOW_TRACKING_URI }}" >> mlflow_creds.txt
+          echo "MLFLOW_TRACKING_USERNAME=${{ secrets.MLFLOW_TRACKING_USERNAME }}" >> mlflow_creds.txt
+          echo "MLFLOW_TRACKING_PASSWORD=${{ secrets.MLFLOW_TRACKING_PASSWORD }}" >> mlflow_creds.txt
+      - name: Build api image (smoke test)
+        run: |
+          docker build --target api \
+            --secret id=mlflow_creds,src=mlflow_creds.txt \
+            -t ml-cicd-api:ci .
+      - name: Clean up secret file
+        if: always()
+        run: rm -f mlflow_creds.txt
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger Render deploy
-        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}"
+        run: curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
