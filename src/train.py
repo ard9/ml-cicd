@@ -29,7 +29,7 @@ METADATA_PATH = MODEL_DIR / "metadata.json"
 MIN_ACCURACY = 0.9  # quality gate threshold
 
 
-def train_and_evaluate(random_state: int = 42):
+def train_and_evaluate(random_state: int = 58):
     data = load_iris()
     X, y = data.data, data.target
 
